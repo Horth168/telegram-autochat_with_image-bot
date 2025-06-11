@@ -82,4 +82,3 @@ async def send_image_loop():
 # Start the bot
 with client:
     client.loop.run_until_complete(send_image_loop())
-
