@@ -1,33 +1,16 @@
+import asyncio
+from telethon import TelegramClient
 from flask import Flask
 from threading import Thread
-from telethon.sync import TelegramClient
-import time, os
+import datetime
 
-# Env variables
+# --- CONFIGURATION ---
 api_id = int(os.getenv("API_ID"))
 api_hash = os.getenv("API_HASH")
-recipient = os.getenv("TARGET_USERNAME")
-
-client = TelegramClient('session', api_id, api_hash)
-
-# Flask app for UptimeRobot
-app = Flask(__name__)
-@app.route('/')
-def home():
-    return "✅ Bot is alive and running"
-
-# Flask thread
-def run_flask():
-    app.run(host='0.0.0.0', port=8080)
-
-# Main image-sending loop
-def send_loop():
-    with client:
-        while True:
-            client.send_file(
-                recipient,
-                'car.jpg',
-                caption="""欢迎来到V88汽车城租车群🫣
+phone = os.getenv("PHONE")
+recipient = os.getenv("TARGET_USERNAME")  # Use string instead of int
+image_path = "car.jpg"  # Local file in your Replit
+caption_text = """欢迎来到V88汽车城租车群🫣
 
 👍本群由【V88汽车城】官方运营，为各位老板提供专业可靠的租车服务
 
@@ -49,11 +32,38 @@ def send_loop():
 ➡️+855 76 668 9568
 
 🔗 V88汽车城群 (https://t.me/Rentcar2025)🔗"""
-            )
-            print("✅ Image sent! Sleeping for 1 hour.")
-            time.sleep(3600)
+# --- Flask web server to keep alive ---
+app = Flask('')
 
-# Start both processes
-Thread(target=run_flask).start()
-Thread(target=send_loop).start()
 
+@app.route('/')
+def home():
+    return "✅ Bot is running"
+
+
+def run_web():
+    app.run(host='0.0.0.0', port=8080)
+
+
+# --- Main loop ---
+client = TelegramClient('session', api_id, api_hash)
+
+
+async def send_photo_every_hour():
+    await client.start(phone)
+    print("✅ Logged in")
+
+    while True:
+        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{now}] Sending photo with caption...")
+        await client.send_file(recipient,
+                               file=image_path,
+                               caption=caption_text)
+        await asyncio.sleep(3600)
+
+
+# --- Start everything ---
+Thread(target=run_web).start()
+
+with client:
+    client.loop.run_until_complete(send_photo_every_hour())
